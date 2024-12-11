@@ -1,0 +1,10 @@
+FROM python:3.9-slim
+
+RUN apt-get update && apt-get install -y time
+
+WORKDIR /app
+
+COPY . /app
+
+# Command to run the Python program with time
+CMD ["sh", "-c", "/usr/bin/time -f 'Execution Time: %e seconds\nMemory Used: %M KB' python3 user_code.py"]
