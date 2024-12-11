@@ -1,0 +1,17 @@
+# Start with an official Node.js image
+FROM node:16
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy all files from your local directory to the container
+COPY . .
+
+# Install necessary Node.js packages
+RUN npm install
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Command to run your Node.js server
+CMD ["node", "server.js"]
