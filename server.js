@@ -14,10 +14,10 @@ app.use(express.json());
 // Define paths for pre-created files
 const tempDir = path.join(__dirname, 'temp');
 const languageConfigs = {
-  python: { filePath: path.join(tempDir, 'user_code.py'), ImageFIle: 'hyro2070/python-runner' },
-  cpp: { filePath: path.join(tempDir, 'user_code.cpp'), ImageFIle: 'hyro2070/cpp-runner' },
-  java: { filePath: path.join(tempDir, 'user_code.java'), ImageFIle: 'hyro2070/java-runner' },
-  js: { filePath: path.join(tempDir, 'user_code.js'), ImageFIle: 'hyro2070/javascipt-runner' },
+  python: { filePath: path.join(tempDir, 'user_code.py'), dockerfile: 'Dockerfiles/Dockerfile.python' },
+  cpp: { filePath: path.join(tempDir, 'user_code.cpp'), dockerfile: 'Dockerfiles/Dockerfile.cpp' },
+  java: { filePath: path.join(tempDir, 'user_code.java'), dockerfile: 'Dockerfiles/Dockerfile.java' },
+  js: { filePath: path.join(tempDir, 'user_code.js'), dockerfile: 'Dockerfiles/Dockerfile.js' },
 };
 
 app.get('/',(req,res)=>{
@@ -34,7 +34,7 @@ app.post('/execute', async (req, res) => {
     return res.status(400).json({ error: 'Unsupported language' });
   }
 
-  const { filePath, ImageFIle } = languageConfigs[language];
+  const { filePath, dockerfile } = languageConfigs[language];
   console.log(filePath);
 
   try {
@@ -43,13 +43,13 @@ app.post('/execute', async (req, res) => {
     console.log(`Code written to file: ${filePath}`);
 
     // Build Docker image
-    const imageName = `${ImageFIle}`;
+    const imageName = `${language}-runner`;
     console.log(`Building Docker image with name: ${imageName}`);
-    // exec(`docker build -f ${dockerfile} -t ${imageName} .`, (buildErr, buildOut) => {
-    //   if (buildErr) {
-    //     console.error('Docker build error:', buildErr);
-    //     return res.status(500).json({ error: 'Failed to build Docker image' });
-    //   }
+    exec(`docker build -f ${dockerfile} -t ${imageName} .`, (buildErr, buildOut) => {
+      if (buildErr) {
+        console.error('Docker build error:', buildErr);
+        return res.status(500).json({ error: 'Failed to build Docker image' });
+      }
 
       // Run the code in the Docker container
       console.log(`Running code inside Docker container for image: ${imageName}`);
@@ -71,12 +71,16 @@ app.post('/execute', async (req, res) => {
         console.log('Program output:', stdout);
         res.json({ output: stdout.trim() }); // Send program output if no errors
       });
-    // });
+    });
   } catch (err) {
     console.error('Unexpected server error:', err);
     res.status(500).json({ error: 'Failed to execute code' });
   }
 });
+
+
+
+
 
 
 app.post('/submit-code', async (req, res) => {
