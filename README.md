@@ -152,8 +152,3 @@ npm run format
 
 We welcome contributions! Please open an issue or submit a pull request for improvements, bug fixes, or features.
 
-
----
-
-Would you like a `Dockerfile`, `.env.example`, or `postman_collection.json` to test endpoints?
-```
