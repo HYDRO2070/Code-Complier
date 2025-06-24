@@ -1,17 +1,13 @@
-# Start with an official Node.js image
-FROM node:16
+FROM node:18
 
-# Set the working directory in the container
+RUN apt-get update && \
+    apt-get install -y g++ openjdk-17-jdk python3 time
+
 WORKDIR /app
-
-# Copy all files from your local directory to the container
 COPY . .
-
-# Install necessary Node.js packages
 RUN npm install
 
-# Expose the port the app runs on
-EXPOSE 3000
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH=$JAVA_HOME/bin:$PATH
 
-# Command to run your Node.js server
 CMD ["node", "server.js"]
