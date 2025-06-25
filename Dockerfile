@@ -12,12 +12,12 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --omit=dev       # reproducible, no devDependencies
+RUN npm ci --omit=dev
 
 COPY . .
 
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=$JAVA_HOME/bin:$PATH
 
-EXPOSE 8080                 # purely informational
+EXPOSE 8080
 CMD ["node", "server.js"]
