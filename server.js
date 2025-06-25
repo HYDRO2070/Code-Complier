@@ -1,16 +1,20 @@
 import express from 'express';
-import { exec } from 'child_process';
+// import cors from 'cors';
+import { exec as rawExec } from 'child_process';
+import util from 'util';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
+
 
 // Simulate __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json());
-
+// app.use(express.json());
+app.use(express.json({ limit: '256kb' }));
+const exec = util.promisify(rawExec);  
 // Define paths for pre-created files
 const tempDir = path.join(__dirname, 'temp');
 const languageConfigs = {
@@ -161,60 +165,125 @@ app.get('/',(req,res)=>{
 // });
 
 
-app.post(['/execute', '/submit-code'], async (req, res) => {
-  const { code, language } = req.body;
-  if (!languageConfigs[language]) {
-    return res.status(400).json({ error: 'Unsupported language' });
-  }
+// app.post(['/execute', '/submit-code'], async (req, res) => {
+//   const { code, language } = req.body;
+//   if (!languageConfigs[language]) {
+//     return res.status(400).json({ error: 'Unsupported language' });
+//   }
 
-  const { filePath } = languageConfigs[language];
-  fs.writeFileSync(filePath, code);
+//   const { filePath } = languageConfigs[language];
+//   fs.writeFileSync(filePath, code);
 
-  let command = '';
-  const filename = path.basename(filePath);
+//   let command = '';
+//   const filename = path.basename(filePath);
 
+//   switch (language) {
+//     case 'cpp':
+//       command = `/usr/bin/time -f "Execution Time: %e seconds\nMemory Used: %M KB" g++ ${filePath} -o ${tempDir}/a.out && ${tempDir}/a.out`;
+//       break;
+//     case 'python':
+//       command = `python3 ${filePath}`;
+//       break;
+//     case 'js':
+//       command = `node ${filePath}`;
+//       break;
+//     case 'java':
+//       const className = filename.replace('.java', '');
+//       command = `javac ${filePath} && java -cp ${tempDir} ${className}`;
+//       break;
+//     default:
+//       return res.status(400).json({ error: 'Unsupported language' });
+//   }
+
+//   exec(command, (err, stdout, stderr) => {
+//     if (err || stderr.includes('error')) {
+//       return res.status(400).json({
+//         error: stderr.split('\n')
+//           .filter(line => !line.includes('Execution Time') && !line.includes('Memory Used'))
+//           .join('\n').trim(),
+//         output: 'Test case 1: Failed',
+//       });
+//     }
+
+//     const executionTime = (stderr.match(/Execution Time: (.+?) seconds/) || [])[1] || 'N/A';
+//     const memoryUsage = (stderr.match(/Memory Used: (.+?) KB/) || [])[1] || 'N/A';
+
+//     res.status(200).json({
+//       output: stdout.trim(),
+//       executionTime,
+//       memoryUsage,
+//     });
+//   });
+// });
+
+/* ---------- helpers ---------- */
+function buildCommand(filePath, language) {
   switch (language) {
     case 'cpp':
-      command = `/usr/bin/time -f "Execution Time: %e seconds\nMemory Used: %M KB" g++ ${filePath} -o ${tempDir}/a.out && ${tempDir}/a.out`;
-      break;
+      return `/usr/bin/time -f "Execution Time: %e seconds\nMemory Used: %M KB" \
+g++ ${filePath} -o ${tempDir}/a.out && ${tempDir}/a.out`;
     case 'python':
-      command = `python3 ${filePath}`;
-      break;
+      return `python3 ${filePath}`;
     case 'js':
-      command = `node ${filePath}`;
-      break;
-    case 'java':
-      const className = filename.replace('.java', '');
-      command = `javac ${filePath} && java -cp ${tempDir} ${className}`;
-      break;
-    default:
-      return res.status(400).json({ error: 'Unsupported language' });
-  }
-
-  exec(command, (err, stdout, stderr) => {
-    if (err || stderr.includes('error')) {
-      return res.status(400).json({
-        error: stderr.split('\n')
-          .filter(line => !line.includes('Execution Time') && !line.includes('Memory Used'))
-          .join('\n').trim(),
-        output: 'Test case 1: Failed',
-      });
+      return `node ${filePath}`;
+    case 'java': {
+      const className = path.basename(filePath, '.java');
+      return `javac ${filePath} && java -cp ${tempDir} ${className}`;
     }
+    default:
+      throw new Error('Unsupported language');
+  }
+}
 
-    const executionTime = (stderr.match(/Execution Time: (.+?) seconds/) || [])[1] || 'N/A';
-    const memoryUsage = (stderr.match(/Memory Used: (.+?) KB/) || [])[1] || 'N/A';
+const pick = (s, re) => (s.match(re) || [])[1] || 'N/A';
+const clean = s =>
+  s.split('\n')
+   .filter(l => !/Execution Time|Memory Used/.test(l))
+   .join('\n')
+   .trim();
 
-    res.status(200).json({
-      output: stdout.trim(),
-      executionTime,
-      memoryUsage,
+/* ---------- ONE handler used by both endpoints ---------- */
+async function runCode(req, res) {
+  const { code = '', language = '' } = req.body || {};
+
+  /* 1. validate language ------------------------------------------------ */
+  const cfg = languageConfigs[language];
+  if (!cfg) return res.status(400).json({ error: 'Unsupported language' });
+
+  /* 2. write code to its temp file -------------------------------------- */
+  await fs.promises.mkdir(tempDir, { recursive: true });
+  await fs.promises.writeFile(cfg.filePath, code);
+
+  /* 3. build the shell command ----------------------------------------- */
+  const cmd = buildCommand(cfg.filePath, language);
+
+  /* 4. exec with hard limits ------------------------------------------- */
+  try {
+    const { stdout, stderr } = await exec(cmd, {
+      timeout: 10_000,          // ⏱️ kill after 10 s
+      maxBuffer: 1_048_576      // 1 MiB stdout+stderr
     });
-  });
-});
+
+    return res.json({
+      output: stdout.trim(),
+      executionTime: pick(stderr, /Execution Time:\s*(.+?)\s*seconds/),
+      memoryUsage:   pick(stderr, /Memory Used:\s*(.+?)\s*KB/)
+    });
+  } catch (err) {
+    /* timeout → err.killed === true, compile/runtime error → err.code */
+    const status = err.killed ? 408 : 400;
+    const stderr = err.stderr || err.message || '';
+    return res.status(status).json({ error: clean(stderr) });
+  }
+}
+
+/* ---------- the two routes ------------------------------------------- */
+app.post('/execute',       runCode);
+app.post('/submit-code',   runCode);
 
 
-
-const PORT = 8080;
+// const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () =>
   console.log(`Server listening on ${PORT}`)
 );
