@@ -1,6 +1,7 @@
 import express from 'express';
 // import cors from 'cors';
 import { exec as rawExec } from 'child_process';
+import { performance } from 'perf_hooks';
 import util from 'util';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -244,34 +245,51 @@ const clean = s =>
 
 /* ---------- ONE handler used by both endpoints ---------- */
 async function runCode(req, res) {
+  const startTime = performance.now();
+  console.log('Received request for /runCode');
+
   const { code = '', language = '' } = req.body || {};
 
-  /* 1. validate language ------------------------------------------------ */
+  /* 1. Validate language */
   const cfg = languageConfigs[language];
-  if (!cfg) return res.status(400).json({ error: 'Unsupported language' });
+  if (!cfg) {
+    console.log('Unsupported language received:', language);
+    return res.status(400).json({ error: 'Unsupported language' });
+  }
+  console.log(`Language validated: ${language}`);
 
-  /* 2. write code to its temp file -------------------------------------- */
-  await fs.promises.mkdir(tempDir, { recursive: true });
-  await fs.promises.writeFile(cfg.filePath, code);
-
-  /* 3. build the shell command ----------------------------------------- */
-  const cmd = buildCommand(cfg.filePath, language);
-
-  /* 4. exec with hard limits ------------------------------------------- */
   try {
+    /* 2. Write code to its temp file */
+    await fs.promises.mkdir(tempDir, { recursive: true });
+    await fs.promises.writeFile(cfg.filePath, code);
+    const writeTime = performance.now();
+    console.log(`File written in ${((writeTime - startTime) / 1000).toFixed(2)}s`);
+
+    /* 3. Build the shell command */
+    const cmd = buildCommand(cfg.filePath, language);
+    console.log(`Executing command: ${cmd}`);
+
+    /* 4. Exec with hard limits */
     const { stdout, stderr } = await exec(cmd, {
-      timeout: 10_000,          // ⏱️ kill after 10 s
-      maxBuffer: 1_048_576      // 1 MiB stdout+stderr
+      timeout: 15000, // Increased to 15s
+      maxBuffer: 1024 * 1024 // 1 MiB
     });
+    
+    const execTime = performance.now();
+    console.log(`Command executed in ${((execTime - writeTime) / 1000).toFixed(2)}s`);
 
     return res.json({
       output: stdout.trim(),
       executionTime: pick(stderr, /Execution Time:\s*(.+?)\s*seconds/),
       memoryUsage:   pick(stderr, /Memory Used:\s*(.+?)\s*KB/)
     });
+
   } catch (err) {
-    /* timeout → err.killed === true, compile/runtime error → err.code */
-    const status = err.killed ? 408 : 400;
+    const errorTime = performance.now();
+    console.error(`Error after ${((errorTime - startTime) / 1000).toFixed(2)}s:`, err);
+
+    /* Timeout → err.killed === true, compile/runtime error → err.code */
+    const status = err.killed ? 408 : 400; // 408 for Request Timeout
     const stderr = err.stderr || err.message || '';
     return res.status(status).json({ error: clean(stderr) });
   }
