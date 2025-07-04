@@ -1,23 +1,13 @@
-# ---------- Optimised Dockerfile ----------
-FROM node:18-slim
+FROM node:18
 
-ARG DEBIAN_FRONTEND=noninteractive
-
-# Install compilers & /usr/bin/time
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      g++ openjdk-17-jdk python3 python3-pip time && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y g++ openjdk-17-jdk python3 time
 
 WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --omit=dev
-
 COPY . .
+RUN npm install
 
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=$JAVA_HOME/bin:$PATH
 
-EXPOSE 8080
 CMD ["node", "server.js"]
