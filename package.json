@@ -7,6 +7,8 @@
         "start": "node server.js"
     },
     "dependencies": {
+        "@bull-board/api": "^6.11.0",
+        "@bull-board/express": "^6.11.0",
         "bullmq": "^5.56.1",
         "cors": "^2.8.5",
         "dotenv": "^17.0.1",

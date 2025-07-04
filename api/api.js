@@ -14,9 +14,9 @@ import basicAuth from 'express-basic-auth';
 import { submitSchema } from '../shared/validate.js';
 import { asyncWrap } from './asyncWrap.js';
 
-import { ExpressAdapter } from 'bull-board/express';
-import { BullMQAdapter } from 'bull-board/bullMQAdapter';
-import { createBullBoard } from 'bull-board';
+import { createBullBoard } from '@bull-board/api';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter.js';
+import { ExpressAdapter } from '@bull-board/express';
 
 /* ------------------------------------------------------------------ */
 /*  Redis & job queue                                                 */
