@@ -5,7 +5,9 @@ import pino from 'pino';
 import { runCode } from '../shared/runCode.js';
 
 const log = pino();
-const redis = new Redis(process.env.REDIS_URL);
+const redis = new Redis(process.env.REDIS_URL, {
+  maxRetriesPerRequest: null
+});
 
 new Worker(
   'code-jobs',
