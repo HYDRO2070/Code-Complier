@@ -1,0 +1,30 @@
+# Ignore node modules & dev clutter
+node_modules
+npm-debug.log
+
+# Git stuff
+.git
+.gitignore
+
+# Env files (you set them in Render manually)
+.env
+.env.*
+
+# Local-only code/output/data
+temp/
+shared/tmp/
+*.out
+*.class
+*.pyc
+*.log
+*.swp
+
+# Editor/OS junk
+.DS_Store
+.vscode
+.idea
+
+# Tests, docs, and unused folders
+tests/
+docs/
+scripts/cleanup.js   # (Optional — only needed in cron Docker build)

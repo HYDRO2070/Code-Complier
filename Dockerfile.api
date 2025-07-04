@@ -1,0 +1,20 @@
+# Dockerfile.api  –  API & Bull Board
+FROM node:18-slim
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    g++ openjdk-17-jdk python3 time && \
+    rm -rf /var/lib/apt/lists/*
+
+# non‑root for extra safety
+RUN useradd -m runner
+USER runner
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
+
+COPY . .
+
+EXPOSE 8080
+CMD ["node", "api/api.js"]
