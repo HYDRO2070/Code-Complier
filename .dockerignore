@@ -7,8 +7,7 @@ npm-debug.log
 .gitignore
 
 # Env files (you set them in Render manually)
-.env
-.env.*
+.env.local
 
 # Local-only code/output/data
 temp/
