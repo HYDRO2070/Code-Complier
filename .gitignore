@@ -1,1 +1,30 @@
-node_modules
+# Node.js
+node_modules/
+npm-debug.log*
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Compiled / temp files
+*.out
+*.class
+temp/
+shared/tmp/
+*.pyc
+*.swp
+
+# BullMQ job cache (if persisted locally, unlikely)
+*.rdb
+*.aof
+
+# Render build artifacts (if any)
+render.yaml
