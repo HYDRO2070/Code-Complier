@@ -2,6 +2,7 @@
 
 import fs from 'fs/promises';
 import { exec as rawExec } from 'child_process';
+import pino from 'pino-http';
 import util from 'util';
 import path from 'path';
 
@@ -11,6 +12,7 @@ await fs.mkdir(tempDir, { recursive: true });
 
 /* ---------- ONE helper that injects /usr/bin/time ---------- */
 const timer = '/usr/bin/time -f "Execution Time: %e seconds\\nMemory Used: %M KB"';
+const log = pino({ transport: { target: 'pino-pretty' } });
 
 /* ---------- per‑language command builders ---------- */
 export const languageConfigs = {
