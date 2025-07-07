@@ -60,6 +60,8 @@ export async function runCode(code, language, jobId) {
     maxBuffer: 1_048_576
   });
 
+  log.info({ jobId: job.id, stdout, stderr }); 
+
   return {
     output: stdout.trim(),
     executionTime: pick(stderr, /Execution Time:\s*(.+?)\s*seconds/),
